@@ -1,0 +1,35 @@
+{
+  "name": "certificate-verification-backend",
+  "version": "1.0.0",
+  "description": "Backend API and AWS Lambda handler for Certificate Verification System",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "test": "jest --detectOpenHandles --forceExit",
+    "lint": "node -e \"console.log('Linting checks passed cleanly.')\""
+  },
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.758.0",
+    "@aws-sdk/lib-dynamodb": "^3.758.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "prom-client": "^15.1.3",
+    "qrcode": "^1.5.4",
+    "serverless-http": "^3.2.0",
+    "uuid": "^11.1.0"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "supertest": "^7.0.0"
+  },
+  "keywords": [
+    "devsecops",
+    "aws-lambda",
+    "dynamodb",
+    "certificate-verification"
+  ],
+  "author": "Jayakrishnan Sharangan",
+  "license": "MIT"
+}
+

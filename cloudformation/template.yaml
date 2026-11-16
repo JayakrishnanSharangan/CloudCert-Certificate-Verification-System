@@ -1,0 +1,225 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >
+  INT378 Advancements in Cloud and DevOps Capstone:
+  Cloud-Native DevSecOps Certificate Verification System Serverless Stack.
+  Includes S3, DynamoDB, Lambda, API Gateway v2, IAM Roles, and CloudWatch Logging.
+
+Parameters:
+  Environment:
+    Type: String
+    Default: dev
+    AllowedValues: [dev, staging, prod]
+    Description: Deployment environment identifier
+
+Resources:
+  # ------------------------------------------------------------
+  # 1. DynamoDB: NoSQL Certificate Datastore (100% Free Tier)
+  # ------------------------------------------------------------
+  CertificateTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub cert-verification-table-${Environment}
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: certificate_id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: certificate_id
+          KeyType: HASH
+      Tags:
+        - Key: Project
+          Value: CertificateVerificationDevSecOps
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: ManagedBy
+          Value: CloudFormation
+
+  # ------------------------------------------------------------
+  # 2. S3 Bucket: Static Website Hosting for React Frontend
+  # ------------------------------------------------------------
+  FrontendBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub cert-verification-frontend-${AWS::AccountId}-${Environment}
+      WebsiteConfiguration:
+        IndexDocument: index.html
+        ErrorDocument: index.html
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: false
+        BlockPublicPolicy: false
+        IgnorePublicAcls: false
+        RestrictPublicBuckets: false
+      Tags:
+        - Key: Project
+          Value: CertificateVerificationDevSecOps
+        - Key: Environment
+          Value: !Ref Environment
+
+  FrontendBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref FrontendBucket
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: PublicReadGetObject
+            Effect: Allow
+            Principal: '*'
+            Action: 's3:GetObject'
+            Resource: !Sub arn:aws:s3:::${FrontendBucket}/*
+
+  # ------------------------------------------------------------
+  # 3. IAM: Least Privilege Execution Role for Lambda Function
+  # ------------------------------------------------------------
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub cert-verification-lambda-role-${Environment}
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: DynamoDBLeastPrivilegeAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - dynamodb:GetItem
+                  - dynamodb:PutItem
+                  - dynamodb:UpdateItem
+                  - dynamodb:Scan
+                Resource: !GetAtt CertificateTable.Arn
+        - PolicyName: CloudWatchLeastPrivilegeLogging
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/*
+
+  # ------------------------------------------------------------
+  # 4. CloudWatch: Structured Log Group (7-Day Retention for Cost Control)
+  # ------------------------------------------------------------
+  LambdaLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /aws/lambda/cert-verification-api-${Environment}
+      RetentionInDays: 7
+
+  # ------------------------------------------------------------
+  # 5. AWS Lambda: Backend API Serverless Compute
+  # ------------------------------------------------------------
+  CertificateLambdaFunction:
+    Type: AWS::Lambda::Function
+    DependsOn:
+      - LambdaExecutionRole
+      - LambdaLogGroup
+    Properties:
+      FunctionName: !Sub cert-verification-api-${Environment}
+      Runtime: nodejs20.x
+      Handler: src/lambda.handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Timeout: 15
+      MemorySize: 256
+      Code:
+        # Default inline stub code; replaced automatically by deployment pipeline zip
+        ZipFile: |
+          exports.handler = async (event) => {
+            return {
+              statusCode: 200,
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                status: "UP",
+                message: "CloudFormation Lambda Initialized Successfully",
+                timestamp: new Date().toISOString()
+              })
+            };
+          };
+      Environment:
+        Variables:
+          TABLE_NAME: !Ref CertificateTable
+          USE_DYNAMODB: "true"
+          NODE_ENV: production
+      Tags:
+        - Key: Project
+          Value: CertificateVerificationDevSecOps
+        - Key: Environment
+          Value: !Ref Environment
+
+  # ------------------------------------------------------------
+  # 6. Amazon API Gateway (HTTP API v2)
+  # ------------------------------------------------------------
+  HttpApi:
+    Type: AWS::ApiGatewayV2::Api
+    Properties:
+      Name: !Sub cert-verification-http-api-${Environment}
+      ProtocolType: HTTP
+      CorsConfiguration:
+        AllowOrigins:
+          - '*'
+        AllowMethods:
+          - GET
+          - POST
+          - PUT
+          - OPTIONS
+        AllowHeaders:
+          - Content-Type
+          - Authorization
+
+  HttpApiIntegration:
+    Type: AWS::ApiGatewayV2::Integration
+    Properties:
+      ApiId: !Ref HttpApi
+      IntegrationType: AWS_PROXY
+      IntegrationUri: !GetAtt CertificateLambdaFunction.Arn
+      PayloadFormatVersion: '2.0'
+
+  HttpApiDefaultRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref HttpApi
+      RouteKey: $default
+      Target: !Sub integrations/${HttpApiIntegration}
+
+  HttpApiStage:
+    Type: AWS::ApiGatewayV2::Stage
+    Properties:
+      ApiId: !Ref HttpApi
+      StageName: $default
+      AutoDeploy: true
+
+  LambdaApiGatewayPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref CertificateLambdaFunction
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${HttpApi}/*/*
+
+Outputs:
+  DynamoDBTableName:
+    Description: DynamoDB Certificate Records Table
+    Value: !Ref CertificateTable
+    Export:
+      Name: !Sub ${AWS::StackName}-DynamoDBTable
+
+  ApiEndpointUrl:
+    Description: Public HTTP API Gateway Endpoint URL
+    Value: !GetAtt HttpApi.ApiEndpoint
+    Export:
+      Name: !Sub ${AWS::StackName}-ApiEndpoint
+
+  FrontendBucketWebsiteUrl:
+    Description: S3 Static Website URL for Frontend
+    Value: !GetAtt FrontendBucket.WebsiteURL
+    Export:
+      Name: !Sub ${AWS::StackName}-FrontendWebsite
+

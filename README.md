@@ -209,3 +209,4 @@ Open Grafana at **`http://localhost:3001`** $\rightarrow$ Navigate to **Dashboar
 
 **Q4: What is the difference between Monitoring and Observability?**  
 *Answer:* Monitoring tracks predefined metrics and alerts us *that* something is broken (e.g. Grafana showing high 500 error rates or elevated latency). Observability allows us to infer the internal states of the system and determine *why* it broke using high-cardinality telemetry, request IDs, and structured CloudWatch logs.
+

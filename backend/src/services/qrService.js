@@ -6,11 +6,11 @@ const QRCode = require('qrcode');
  * @param {string} baseUrl
  * @returns {Promise<string>}
  */
-async function generateQRCode(certificateId, baseUrl = 'https://verify.cloudcert.internal') {
-  const verifyUrl = `${baseUrl}/verify/${certificateId}`;
+async function generateQRCode(certificateId, baseUrl = 'http://localhost:3000') {
+  const verifyUrl = `${baseUrl}/?id=${encodeURIComponent(certificateId)}`;
   try {
     const dataUrl = await QRCode.toDataURL(verifyUrl, {
-      errorCorrectionLevel: 'H',
+      errorCorrectionLevel: 'M',
       type: 'image/png',
       margin: 2,
       width: 250,
@@ -29,4 +29,3 @@ async function generateQRCode(certificateId, baseUrl = 'https://verify.cloudcert
 module.exports = {
   generateQRCode
 };
-

@@ -31,3 +31,4 @@ for ($i = 1; $i -le $Iterations; $i++) {
 }
 
 Write-Host "Traffic generation complete! Check Grafana at http://localhost:3001" -ForegroundColor Green
+

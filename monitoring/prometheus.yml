@@ -10,3 +10,4 @@ scrape_configs:
         labels:
           environment: 'local-docker'
           service: 'certificate-api'
+

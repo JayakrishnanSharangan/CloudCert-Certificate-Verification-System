@@ -12,6 +12,15 @@ const { certificateOperations } = require('./metrics');
 
 const router = express.Router();
 
+// Helper to determine the frontend base URL for QR code redirection
+function getFrontendBaseUrl(req) {
+  const host = req.get('host') || 'localhost:3000';
+  const protocol = req.protocol || 'http';
+  // If request hits the backend port 5000, redirect QR scans to the frontend UI on port 3000
+  const frontendHost = host.replace(':5000', ':3000');
+  return `${protocol}://${frontendHost}`;
+}
+
 // Helper to generate a clean certificate identifier
 function generateCertificateId() {
   const year = new Date().getFullYear();
@@ -39,6 +48,12 @@ router.get('/verify/:id', async (req, res) => {
       });
     }
 
+    // Auto-generate QR code if it was missing or empty in the record
+    if (!cert.qr_code_url) {
+      const baseUrl = getFrontendBaseUrl(req);
+      cert.qr_code_url = await generateQRCode(cert.certificate_id, baseUrl);
+    }
+
     const isValid = cert.status === 'VALID';
     certificateOperations.inc({ 
       operation: 'verify', 
@@ -62,6 +77,15 @@ router.get('/verify/:id', async (req, res) => {
 router.get('/', async (req, res) => {
   try {
     const certs = await listCertificates();
+    const baseUrl = getFrontendBaseUrl(req);
+    
+    // Ensure all returned certs have valid QR codes
+    for (const cert of certs) {
+      if (!cert.qr_code_url) {
+        cert.qr_code_url = await generateQRCode(cert.certificate_id, baseUrl);
+      }
+    }
+
     return res.status(200).json(certs);
   } catch (err) {
     console.error('Error listing certificates:', err);
@@ -81,9 +105,7 @@ router.post('/', async (req, res) => {
   }
 
   const certificate_id = req.body.certificate_id || generateCertificateId();
-  const host = req.get('host') || 'localhost:3000';
-  const protocol = req.protocol || 'http';
-  const baseUrl = `${protocol}://${host}`;
+  const baseUrl = getFrontendBaseUrl(req);
 
   try {
     // Generate QR code for instant scan-to-verify
@@ -132,6 +154,11 @@ router.put('/:id/status', async (req, res) => {
       return res.status(404).json({ error: 'Certificate not found' });
     }
 
+    if (!updated.qr_code_url) {
+      const baseUrl = getFrontendBaseUrl(req);
+      updated.qr_code_url = await generateQRCode(updated.certificate_id, baseUrl);
+    }
+
     certificateOperations.inc({ 
       operation: status.toUpperCase() === 'REVOKED' ? 'revoke' : 'reinstate', 
       status: 'success' 
@@ -159,4 +186,3 @@ router.get('/audit-logs', async (req, res) => {
 });
 
 module.exports = router;
-

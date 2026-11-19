@@ -7,6 +7,10 @@ node_modules/
 dist/
 build/
 *.zip
+*.tar.gz
+
+# Local monitoring binaries
+monitoring/*-bin/
 
 # Environment variables
 .env
@@ -36,4 +40,3 @@ terraform.rc
 Thumbs.db
 .vscode/
 .idea/
-

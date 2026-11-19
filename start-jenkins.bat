@@ -4,12 +4,17 @@ echo ==========================================================
 echo Starting Jenkins for CloudCert Pipeline Demo
 echo ==========================================================
 echo Port: http://localhost:8080
-echo Initial Admin Password: c0a796a6c91945c68131a420941fc795
-echo ==========================================================
 
 set "JAVA_EXE=C:\Program Files\Microsoft\jdk-21.0.13.21-hotspot\bin\java.exe"
 set "JENKINS_WAR=%~dp0jenkins\jenkins.war"
 set "JENKINS_HOME=%~dp0jenkins\home"
+set "PWD_FILE=%JENKINS_HOME%\secrets\initialAdminPassword"
+
+if exist "%PWD_FILE%" (
+    set /p ADMIN_PWD=<"%PWD_FILE%"
+    echo Admin Password loaded from secure secrets store.
+)
+echo ==========================================================
 
 if not exist "%JAVA_EXE%" (
     echo [ERROR] Java not found at %JAVA_EXE%

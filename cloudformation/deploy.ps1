@@ -9,12 +9,16 @@ Write-Host "==========================================================" -Foregro
 Write-Host "Deploying CloudFormation Stack: $StackName ($Environment)" -ForegroundColor Cyan
 Write-Host "==========================================================" -ForegroundColor Cyan
 
-# 1. Package backend zip for Lambda
-Write-Host "[1/5] Packaging backend Lambda artifact..." -ForegroundColor Yellow
+# 1. Package backend zip for Lambda (if not already built)
 $LambdaZip = "$PSScriptRoot\lambda-deployment.zip"
-if (Test-Path $LambdaZip) { Remove-Item $LambdaZip -Force }
-
-Compress-Archive -Path "$PSScriptRoot\..\backend\src\*", "$PSScriptRoot\..\backend\node_modules" -DestinationPath $LambdaZip
+if (-not (Test-Path $LambdaZip)) {
+    Write-Host "[1/5] Packaging backend Lambda artifact..." -ForegroundColor Yellow
+    Push-Location "$PSScriptRoot\..\backend"
+    tar.exe -a -c -f "$LambdaZip" src node_modules package.json
+    Pop-Location
+} else {
+    Write-Host "[1/5] Using existing backend Lambda artifact: $LambdaZip" -ForegroundColor Green
+}
 
 # 2. Deploy CloudFormation Stack
 Write-Host "[2/5] Executing CloudFormation deployment..." -ForegroundColor Yellow
@@ -58,12 +62,12 @@ if ($WebsiteUrl -match "http://([^.]+)\.s3") {
     
     # Re-build frontend with production API URL
     $env:VITE_API_URL = $ApiEndpoint
-    Set-Location "$PSScriptRoot\..\frontend"
-    npm run build
+    Push-Location "$PSScriptRoot\..\frontend"
+    & "C:\Program Files\nodejs\npm.cmd" run build
     
     # Sync dist to S3
     aws s3 sync dist/ "s3://$BucketName" --delete --region $Region
-    Set-Location $PSScriptRoot
+    Pop-Location
 }
 
 # 5. Output Results

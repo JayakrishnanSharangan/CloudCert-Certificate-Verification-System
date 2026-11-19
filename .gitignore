@@ -40,3 +40,7 @@ terraform.rc
 Thumbs.db
 .vscode/
 .idea/
+
+tools/
+security-reports/
+jenkins/

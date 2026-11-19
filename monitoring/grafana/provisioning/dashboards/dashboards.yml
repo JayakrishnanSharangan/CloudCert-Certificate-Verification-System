@@ -9,5 +9,4 @@ providers:
     updateIntervalSeconds: 10
     allowUiUpdates: true
     options:
-      path: /etc/grafana/dashboards
-
+      path: C:\Users\J\Downloads\devops project\monitoring\grafana\dashboards

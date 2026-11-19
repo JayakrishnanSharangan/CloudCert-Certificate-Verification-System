@@ -1,4 +1,4 @@
-﻿# ==============================================================================
+# ==============================================================================
 # CLOUDCERT MASTER ONE-CLICK DEPLOYMENT & ORCHESTRATION ENGINE
 # Project: Cloud-Native DevSecOps Certificate Verification System (INT378)
 # Author: Jayakrishnan Sharangan (Reg. No: 12324644)
@@ -157,3 +157,4 @@ Start-Process "http://localhost:3001"
 Start-Process "$S3Url"
 
 Write-Host "Done! All tools, pipelines, cloud endpoints, and dashboards are running." -ForegroundColor Green
+

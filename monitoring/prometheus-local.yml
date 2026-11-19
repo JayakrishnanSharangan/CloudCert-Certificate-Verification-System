@@ -1,0 +1,25 @@
+global:
+  scrape_interval: 5s
+  evaluation_interval: 5s
+
+scrape_configs:
+  # 1. LIVE AWS CLOUD SERVERLESS TARGET
+  - job_name: 'aws-cloud-certificate-verification'
+    scheme: https
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['4zaq0wpwcd.execute-api.us-east-1.amazonaws.com']
+        labels:
+          environment: 'aws-production'
+          region: 'us-east-1'
+          account_id: '850320042628'
+          service: 'aws-lambda-dynamodb'
+
+  # 2. Local fallback target
+  - job_name: 'local-certificate-api'
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['localhost:5000']
+        labels:
+          environment: 'local-development'
+          service: 'certificate-api'
